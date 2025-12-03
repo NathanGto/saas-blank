@@ -20,7 +20,6 @@ npm-debug.log*
 yarn-debug.log*
 EOF
 
-
 # testing
 /coverage
 

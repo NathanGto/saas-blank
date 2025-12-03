@@ -46,30 +46,53 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
   }
 
-async function handleGoogleLogin() {
-  setPending(true);
-  setError(null);
-  try {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
+  // --- Core OAuth helper (interne)
+  async function handleOAuthProvider(
+    provider: "google" | "linkedin_oidc" | "apple"
+  ) {
+    setPending(true);
+    setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${origin}/auth/callback`
-      }
-    });
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
 
-    if (error) throw error;
-    // Supabase redirige vers Google puis vers /auth/callback
-  } catch (err: any) {
-    setError(err.message ?? "Google sign-in failed");
-    setPending(false);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${origin}/auth/callback`
+        }
+      });
+
+      if (error) throw error;
+      // Redirection gérée par Supabase (puis /auth/callback)
+    } catch (err: any) {
+      const providerName =
+        provider === "google"
+          ? "Google"
+          : provider === "linkedin_oidc"
+          ? "LinkedIn"
+          : "Apple";
+
+      setError(err.message ?? `${providerName} sign-in failed`);
+      setPending(false);
+    }
   }
-}
+
+  async function handleGoogleLogin() {
+    return handleOAuthProvider("google");
+  }
+
+  async function handleLinkedInLogin() {
+    return handleOAuthProvider("linkedin_oidc");
+  }
+
+  async function handleAppleLogin() {
+    return handleOAuthProvider("apple");
+  }
 
   return (
-    <div className="card max-w-md w-full p-6 space-y-5 mx-auto">
+    <div className="card mx-auto w-full max-w-md space-y-5 p-6">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">
           {isLogin ? "Welcome back" : "Create your account"}
@@ -112,7 +135,7 @@ async function handleGoogleLogin() {
         </div>
 
         {error && (
-          <p className="text-xs text-red-400 bg-red-950/40 rounded-md px-3 py-2">
+          <p className="rounded-md bg-red-950/40 px-3 py-2 text-xs text-red-400">
             {error}
           </p>
         )}
@@ -134,18 +157,45 @@ async function handleGoogleLogin() {
 
       <div className="flex items-center gap-2 text-[11px] text-slate-500">
         <div className="h-px flex-1 bg-slate-800" />
-        <span>or</span>
+        <span>or continue with</span>
         <div className="h-px flex-1 bg-slate-800" />
       </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleLogin}
-        disabled={pending}
-        className="btn-outline w-full justify-center text-xs"
-      >
-        Continue with Google
-      </button>
+      {/* Row de logos cliquables */}
+      <div className="flex items-center justify-center gap-3">
+        {/* Google */}
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={pending}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/60 text-xs shadow-sm transition hover:border-sky-500 hover:bg-slate-800 disabled:opacity-60"
+        >
+          <span className="sr-only">Continue with Google</span>
+          <span className="text-lg font-semibold text-slate-100">G</span>
+        </button>
+
+        {/* LinkedIn */}
+        <button
+          type="button"
+          onClick={handleLinkedInLogin}
+          disabled={pending}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/60 text-xs shadow-sm transition hover:border-sky-500 hover:bg-slate-800 disabled:opacity-60"
+        >
+          <span className="sr-only">Continue with LinkedIn</span>
+          <span className="text-[13px] font-bold text-slate-100">in</span>
+        </button>
+
+        {/* Apple */}
+        <button
+          type="button"
+          onClick={handleAppleLogin}
+          disabled={pending}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/60 text-xs shadow-sm transition hover:border-sky-500 hover:bg-slate-800 disabled:opacity-60"
+        >
+          <span className="sr-only">Continue with Apple</span>
+          <span className="text-xl text-slate-100"></span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // Client Stripe (OK au niveau global, il gère juste les env Stripe)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 // Petite fonction utilitaire pour créer le client admin Supabase
-function getSupabaseAdmin() {
+function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -18,7 +17,7 @@ function getSupabaseAdmin() {
     throw new Error("Supabase admin client not configured");
   }
 
-  return createClient<Database>(url, serviceKey, {
+  return createClient(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

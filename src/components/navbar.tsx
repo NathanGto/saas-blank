@@ -1,20 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useState } from "react";
+import { useUser } from "@/hooks/useUser";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/lib/supabaseClient";
+import { UserMenu } from "@/components/user-menu";
 
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About us" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/testimonials", label: "Testimonials" }
+  { href: "/testimonials", label: "Testimonials" },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  const { user, loading } = useUser();
+  const { profile } = useProfile(user);
+
+  const isLogged = !!user;
+  const isFreePlan = !!profile && profile.plan === "free";
+
+  async function handleMobileLogout() {
+    await supabase.auth.signOut();
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
@@ -29,7 +47,7 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-14 text-sm md:flex">
-          {navItems.map(item => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -44,19 +62,37 @@ export function Navbar() {
         </nav>
 
         {/* Desktop actions */}
-        <div className="hidden items-center gap-2 sm:flex">
-          <Link href="/login" className="btn-outline text-xs md:text-sm">
-            Log in
-          </Link>
-          <Link href="/signup" className="btn-primary text-xs md:text-sm">
-            Get started
-          </Link>
+        <div className="hidden items-center gap-3 sm:flex">
+          {/* CTA Upgrade visible si l'utilisateur est connecté et sur le plan Free */}
+          {!loading && isLogged && isFreePlan && (
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/account")}
+              className="hidden text-[11px] font-medium text-sky-300 underline md:inline-flex"
+            >
+              Upgrade to Pro
+            </button>
+          )}
+
+          {!loading && isLogged ? (
+            // Menu utilisateur (avatar + My Account + Dashboard + Logout)
+            <UserMenu />
+          ) : (
+            <>
+              <Link href="/login" className="btn-outline text-xs md:text-sm">
+                Log in
+              </Link>
+              <Link href="/signup" className="btn-primary text-xs md:text-sm">
+                Get started
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile burger */}
         <button
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-200 md:hidden"
-          onClick={() => setOpen(o => !o)}
+          onClick={() => setOpen((o) => !o)}
           aria-label="Toggle menu"
         >
           <span className="sr-only">Toggle navigation</span>
@@ -71,7 +107,7 @@ export function Navbar() {
       {open && (
         <div className="border-t border-slate-800 bg-slate-950 md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm">
-            {navItems.map(item => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -88,12 +124,40 @@ export function Navbar() {
             ))}
 
             <div className="mt-2 flex gap-2">
-              <Link href="/login" className="btn-outline flex-1 justify-center text-xs">
-                Log in
-              </Link>
-              <Link href="/signup" className="btn-primary flex-1 justify-center text-xs">
-                Get started
-              </Link>
+              {!loading && isLogged ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="btn-outline flex-1 justify-center text-xs"
+                    onClick={() => setOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleMobileLogout}
+                    className="btn-primary flex-1 justify-center text-xs"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="btn-outline flex-1 justify-center text-xs"
+                    onClick={() => setOpen(false)}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="btn-primary flex-1 justify-center text-xs"
+                    onClick={() => setOpen(false)}
+                  >
+                    Get started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

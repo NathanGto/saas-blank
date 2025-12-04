@@ -36,7 +36,7 @@ export default function AuthCallbackPage() {
     <div className="mx-auto flex min-h-[calc(100vh-4rem-3.5rem)] max-w-6xl items-center justify-center px-4">
       <div className="card max-w-md w-full p-6 space-y-4 text-sm">
         <p className="font-medium">
-          Finishing sign-in with Google. Please wait...
+          Finishing sign-in. Please wait...
         </p>
         {error && (
           <p className="text-xs text-red-400">

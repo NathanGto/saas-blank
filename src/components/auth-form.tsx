@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Mode = "login" | "signup";
 
@@ -134,6 +135,16 @@ export function AuthForm({ mode }: AuthFormProps) {
           />
         </div>
 
+        {isLogin && (
+        <div className="flex justify-end">
+        <Link
+          href="/forgot-password"
+          className="text-[11px] text-sky-400 hover:underline"
+          >
+          Forgot your password?
+        </Link>
+        </div>)}
+
         {error && (
           <p className="rounded-md bg-red-950/40 px-3 py-2 text-xs text-red-400">
             {error}
@@ -186,7 +197,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </button>
 
         {/* Apple */}
-        <button
+        {/*}<button
           type="button"
           onClick={handleAppleLogin}
           disabled={pending}
@@ -194,7 +205,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         >
           <span className="sr-only">Continue with Apple</span>
           <span className="text-xl text-slate-100"></span>
-        </button>
+        </button>*/}
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     flowType: "implicit",          // ⬅️ important
     detectSessionInUrl: true,      // parse le hash de retour Google
-    persistSession: true           // garde la session en localStorage
+    persistSession: true,           // garde la session en localStorage
+    storageKey: "saas-blank-auth",
+    autoRefreshToken: true,
   }
 });

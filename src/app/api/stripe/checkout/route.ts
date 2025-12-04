@@ -3,15 +3,15 @@
 
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2024-06-20",
+});
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = await createSupabaseServerClient(); // ⬅️ ICI
 
     const {
       data: { user },
@@ -22,7 +22,6 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Récupérer le profil (s'il existe déjà)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
@@ -30,12 +29,14 @@ export async function POST(req: Request) {
       .single();
 
     if (profileError) {
-      console.warn("No existing profile, will create one on the fly", profileError);
+      console.warn(
+        "No existing profile, will create one on the fly",
+        profileError
+      );
     }
 
-    let customerId = profile?.stripe_customer_id as string | null;
+    let customerId = (profile?.stripe_customer_id as string) ?? null;
 
-    // Créer un customer Stripe si besoin
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email ?? undefined,
@@ -44,19 +45,16 @@ export async function POST(req: Request) {
 
       customerId = customer.id;
 
-      // Créer / mettre à jour le profil avec le stripe_customer_id
-      await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: user.id,
-            first_name: profile?.first_name ?? null,
-            last_name: profile?.last_name ?? null,
-            plan: profile?.plan ?? "free",
-            stripe_customer_id: customerId,
-          },
-          { onConflict: "id" }
-        );
+      await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          first_name: profile?.first_name ?? null,
+          last_name: profile?.last_name ?? null,
+          plan: profile?.plan ?? "free",
+          stripe_customer_id: customerId,
+        },
+        { onConflict: "id" }
+      );
     }
 
     const origin =
@@ -74,7 +72,6 @@ export async function POST(req: Request) {
       success_url: `${origin}/dashboard/account?checkout=success`,
       cancel_url: `${origin}/dashboard/account?checkout=cancelled`,
       allow_promotion_codes: true,
-      // important : on passe l'id user à Stripe pour le webhook
       metadata: {
         user_id: user.id,
       },

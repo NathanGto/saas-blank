@@ -3,15 +3,15 @@
 
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2024-06-20",
+});
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = await createSupabaseServerClient(); // ⬅️ ICI
 
     const {
       data: { user },

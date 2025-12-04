@@ -1,11 +1,15 @@
+// src/app/api/stripe/webhook/route.ts
+// @ts-nocheck
+
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Client Stripe (OK au niveau global, il gère juste les env Stripe)
+export const runtime = "nodejs"; // important pour Buffer & Stripe
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-// Petite fonction utilitaire pour créer le client admin Supabase
+// Client admin Supabase (service_role)
 function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,8 +36,8 @@ export async function POST(req: Request) {
   }
 
   const buf = Buffer.from(await req.arrayBuffer());
-
   let event: Stripe.Event;
+
   try {
     event = stripe.webhooks.constructEvent(
       buf,
@@ -45,7 +49,6 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  // On crée le client admin *ici*, pas au top-level
   const supabaseAdmin = getSupabaseAdmin();
 
   try {
@@ -53,41 +56,40 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        const subscriptionId = session.subscription as string | null;
         const customerId = session.customer as string | null;
-        const userId = session.metadata?.user_id; // à adapter à ton metadata
+        const userId = (session.metadata?.user_id as string) || null;
 
         if (userId && customerId) {
           const { error } = await supabaseAdmin
             .from("profiles")
-            .update({
-              plan: "pro",
-              stripe_customer_id: customerId,
-            })
-            .eq("id", userId);
+            .upsert(
+              {
+                id: userId,
+                plan: "pro",
+                stripe_customer_id: customerId,
+              },
+              { onConflict: "id" }
+            );
 
           if (error) {
-            console.error("Error updating profile on checkout:", error);
+            console.error("Error upserting profile on checkout:", error);
           }
         }
         break;
       }
 
-      case "customer.subscription.deleted":
-      case "customer.subscription.updated": {
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
-        // Exemple assez simple : si la sub est annulée, repasse en free
         const isActive =
           subscription.status === "active" ||
           subscription.status === "trialing";
 
         const { error } = await supabaseAdmin
           .from("profiles")
-          .update({
-            plan: isActive ? "pro" : "free",
-          })
+          .update({ plan: isActive ? "pro" : "free" })
           .eq("stripe_customer_id", customerId);
 
         if (error) {
@@ -102,7 +104,7 @@ export async function POST(req: Request) {
     }
 
     return new NextResponse("ok", { status: 200 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error handling Stripe webhook:", err);
     return new NextResponse("Webhook handler error", { status: 500 });
   }

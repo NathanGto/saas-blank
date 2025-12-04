@@ -6,9 +6,7 @@ import Stripe from "stripe";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-11-17.clover",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 export async function POST(req: Request) {
   try {
@@ -17,20 +15,21 @@ export async function POST(req: Request) {
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userError || !user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { data: profile, error } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
       .single();
 
-    if (error || !profile?.stripe_customer_id) {
-      console.error(error);
+    if (profileError || !profile?.stripe_customer_id) {
+      console.error("No Stripe customer for portal", profileError);
       return new NextResponse("No Stripe customer", { status: 400 });
     }
 
@@ -44,7 +43,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: portalSession.url });
   } catch (err) {
-    console.error(err);
+    console.error("Stripe portal error", err);
     return new NextResponse("Internal error", { status: 500 });
   }
 }

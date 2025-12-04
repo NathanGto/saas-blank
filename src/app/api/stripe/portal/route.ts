@@ -5,13 +5,11 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2024-06-20",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createSupabaseServerClient(); // ⬅️ ICI
+    const supabase = await createSupabaseServerClient();
 
     const {
       data: { user },
@@ -19,6 +17,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      console.error("Stripe portal: no user / auth error", userError);
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
